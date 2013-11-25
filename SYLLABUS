@@ -1,0 +1,79 @@
+## Description
+
+It's not uncommon for modules and applications to exit the prototype stage
+and enter the wild, and for the developers to quickly find out their code
+can't stand up to real world punishment. In this coarse we'll go over how
+to harden your code and prepare it for the onslaught of users that will
+knowingly or unknowingly pummel your site, pound your API and thrash your
+servers. This course will focus on performance for development on Linux
+and will use the latest development version of Node.
+
+
+## Objectives
+
+* Learn performance fundamentals of stability, scalability and source.
+* Introduction to I/O and Node plumbing.
+* Performance analysis tools.
+* Interpret results from performance tests.
+* Apply what you find.
+* Learn more performant module development patterns.
+* Write better benchmarks.
+
+
+## Prerequisites
+
+Participants should be familiar with all topics included in The Node
+Firm's
+[Node.js Core Foundations](http://thenodefirm.com/training/core-foundations)
+training and
+[Advanced Node.js Development](http://thenodefirm.com/training/advanced-nodejs-development)
+training. They should also feel comfortable building Node and v8 from
+source.
+
+
+## Syllabus
+
+* Introduce three key areas of performance and why they're important
+  * Stability
+  * Scalability
+  * Source
+* Hardening your code against the world
+  * Make no assumptions
+  * Simplify argument parsing for sanity and performance
+  * Standardize error handling and type coercion
+  * Know your own API
+  * Basic unit testing
+* Grow with demand, on demand
+  * Single threaded ain't so bad
+  * Avoid using Node to deliver static content
+  * Compartmentalize dynamic content and punish your CDN
+  * Sacrificing micro for the macro
+  * Basic stress testing
+* Understand the sources
+  * Analyze all the things
+  * Choosing modules wisely
+  * Introduction to writing scalable APIs
+  * Using hardened code to experiment and explore
+* General areas of application performance
+  * I/O intensive
+  * CPU intensive
+  * How the world affects my code
+  * How I affect my application
+* Introduction to Node plumbing
+  * Overview of internal data flow
+  * How this affects I/O
+* Performance analysis tools
+  * Build steps for the tools we want
+  * v8 flags overview
+  * Interpret your DEOPTs
+  * Understanding v8's tick processor
+  * Finding those unnamed functions
+  * Basics of Linux profiling using `perf`
+  * Introduction to IRHydra
+* Trying out our tools
+  * Use what we've learned on real world code
+  * Perform tests on modules we may like to use
+* Writing benchmarks
+  * Understand the goal
+  * Don't just test the optimal scenario
+  * From micro to macro

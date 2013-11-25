@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+
+    <title>Node Performance Training</title>
+
+    <meta name="description" content="Make all the things fast">
+    <meta name="author" content="Trevor Norris">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="css/reveal.min.css">
+    <link rel="stylesheet" href="css/theme/night.css" id="theme">
+
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <!-- If the query includes 'print-pdf', use the PDF print sheet -->
+    <script>
+      document.write('<link rel="stylesheet" href="css/print/' + (window.location.search.match(/print-pdf/gi) ? 'pdf' : 'paper') + '.css" type="text/css" media="print">');
+    </script>
+
+    <!-- styles specific to this presentation -->
+    <style>
+    div.lefty-section {
+      text-align: left;
+      margin-top: 48px;
+    }
+    div.lefty-section p {
+      font-size: 34px;
+    }
+    pre.std-pre {
+      font-size: 24px;
+      margin-top: 38px;
+    }
+    .reveal pre code {
+      max-height: 720px;
+      padding: 12px;
+    }
+    .reveal .slides > section {
+      padding: 0;
+      min-height: 90%;
+    }
+    .reveal .slides {
+      height: 100%;
+      top: 400px;
+      margin-top: 0;
+    }
+    /*
+    .reveal .slides > section > section {
+      min-height: 100%;
+    }
+    */
+  </style>
+
+  <!--[if lt IE 9]>
+  <script src="lib/js/html5shiv.js"></script>
+  <![endif]-->
+</head>
+<body>
+  <div class="reveal">
+
+    <!-- Any section element inside of this container is displayed as a slide -->
+    <div class="slides">
+
+      <section>
+        <h1>Node, Performance and Stuff</h1>
+        <h3 style="margin-top: 40px;">There's a lot more to good performance than making code faster</h3>
+      </section>
+
+      <section>
+        <h2>three key areas of performance</h2>
+        <div style="text-align: left;">
+          <h3 class="fragment" style="margin-top: 80px;">Stability</h3>
+          <h3 class="fragment" style="margin-top: 80px;">Scalability</h3>
+          <h3 class="fragment" style="margin-top: 80px;">Source</h3>
+        </div>
+      </section>
+
+      <section>
+        <h2>hardening your code</h2>
+        <p>Preparing for the real world</p>
+        <div style="margin-top: 80px; text-align: left;">
+          <p class="fragment">A lot of basics are missed more often than you'd think. So we'll start there.</p>
+          <p class="fragment" style="margin-top: 20px;">Prevent the downward spiral from the beginning</p>
+          <p class="fragment" style="margin-top: 20px;">Give your developers freedom</p>
+          <p class="fragment" style="margin-top: 40px;">Now... How do we achieve it?</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>simplify function parameters</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <p class="fragment">Complex argument parsing kills performance and developer brain cells</p>
+          <p class="fragment" style="margin-top: 20px;">It also kills v8 performance</p>
+          <p class="fragment" style="margin-top: 20px;">Stick with the immediate bubble down approach</p>
+          <p class="fragment" style="margin-top: 20px;">Each argument should only need to be parsed once</p>
+          <div class="fragment" style="margin-top: 40px;">
+            <p>So make your function parameters look like this:</p>
+            <pre style="margin-top: 28px; font-size: 24px; box-shadow: 0 0 0;">function good([arg1[, arg2[, arg3]]])
+function alsoGood([arg1][arg2][arg3])</pre>
+          </div>
+          <div class="fragment" style="margin-top: 40px;">
+            <p>Avoid this:</p>
+            <pre style="margin-top: 28px; font-size: 24px; box-shadow: 0 0 0;">function hateYourselfMuch(arg1[, arg2[, arg3][, arg4]][, arg5][, arg6])</pre>
+          </div>
+          <p class="fragment" style="margin-top: 40px;">In truly hot paths each argument should be required</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>make no assumptions</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">JavaScript is loose with its types... Don't be with yours</p>
+          <p class="fragment" style="margin-top: 20px;">Remember to check more than just argument types (e.g. numeric range)</p>
+          <p class="fragment" style="margin-top: 20px;">It's better to accidentally keep good data out then silently allow bad data in</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>set standards</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Most JavaScript developers have (usually strong) opinions how errors should be thrown/caught</p>
+          <p class="fragment" style="margin-top: 20px;">So <b>document the way it will be handled in your library</b></p>
+        </div>
+      </section>
+
+      <section>
+        <h3>user facing vs internal api</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Always check everything that comes from the user.</p>
+          <p class="fragment" style="margin-top: 20px;">If they're calls are consistent then v8 will mostly optimize those checks out.</p>
+          <p class="fragment" style="margin-top: 20px;">I personally prefer to have macros for internal API checks that can be removed in a release build.</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>unit test!</h3>
+        <p></p>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Don't need to use a complex framework</p>
+          <p class="fragment" style="margin-top: 20px;">The minimal tests are those to make sure the code throws when it should</p>
+          <p class="fragment" style="margin-top: 20px;">Get in the habit of always committing applicable tests in the same commit as the source changes</p>
+          <p class="fragment" style="margin-top: 40px;">All this is <i>very</i> important to improve performance</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>growing with demand</h2>
+        <p>Your users' perception is the true test of performance</p>
+        <div style="margin-top: 80px; text-align: left;">
+          <p class="fragment">News of your new service just went viral</p>
+          <p class="fragment" style="margin-top: 20px;">Excited, you jump online to see how many new accounts have been created</p>
+          <p class="fragment" style="margin-top: 20px;">... to find that your servers went down under load</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>single threaded ain't so bad</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Node forces you to write applications that are naturally easier to scale. Use it to your advantage.</p>
+          <p class="fragment" style="margin-top: 20px;">Node processes are light weight, and should take &lt; 500ms to start up.</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>avoid delivering static content</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Seriously, just don't</p>
+          <p class="fragment" style="margin-top: 20px;">There are many services that specialize in delivering static content</p>
+          <p class="fragment" style="margin-top: 20px;"><b>USE THEM</b></p>
+          <p class="fragment" style="margin-top: 20px;">and by "them" I mean a CDN</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>compartmentalize dynamic content and punish your cdn</h3>
+        <p>Offload as much as possible to that cloud in the sky</p>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Make dynamic content look static</p>
+          <p class="fragment" style="margin-top: 20px;">More, smaller requests could be a better solution</p>
+          <p class="fragment" style="margin-top: 20px;">Organizing content this way also helps maintain more fine-grained cache controls</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>sacrifice the micro for the macro</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Having sufficient parameter checks will add a benchmark hit, but allows developers to try more things out and their managers more comfort knowing those changes won't blow up the world.</p>
+          <p class="fragment" style="margin-top: 20px;">Centralizing your data away from application servers might add a latency hit, but will allow new servers to be stood up much quicker.</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>basic stress testing</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Stress tests are <i>not</i> benchmarks</p>
+          <p class="fragment" style="margin-top: 20px;">Everything has a point of failure, so it's important you know where it is</p>
+          <p class="fragment" style="margin-top: 20px;">Setup basic scenarios:</p>
+          <p class="fragment" style="margin-top: 20px;">- Page was posted on HN</p>
+          <p class="fragment" style="margin-top: 20px;">- Hackers are probing your servers</p>
+          <p class="fragment" style="margin-top: 20px;">- DDOS attack</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>understand the source</h2>
+        <div style="margin-top: 80px; text-align: left;">
+          <p class="fragment">And that of your modules</p>
+          <p class="fragment" style="margin-top: 20px;">And your modules' modules</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>chose your modules wisely</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Selecting a module is a commitment</p>
+          <p class="fragment" style="margin-top: 20px;">Open source takes time, not money</p>
+          <p class="fragment" style="margin-top: 20px;">You probably don't have a support contract</p>
+          <p class="fragment" style="margin-top: 20px;">In your selection and analysis, be just as critical of the module</p>
+          <p class="fragment" style="margin-top: 20px;">Don't be afraid to start modifying code in <code>node_modules</code> to see if that fixes your problem</p>
+          <p class="fragment" style="margin-top: 20px;">Face that at some point you might have to fork or abandon ship</p>
+        </div>
+      </section>
+
+      <!-- TODO: will do this in console for now, but get some basic examples for slides
+
+      <section>
+        <h3>brief introduction to scalable apis</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment"></p>
+        </div>
+      </section>
+
+      -->
+
+      <section>
+        <h2>general areas of application performance</h2>
+        <div style="margin-top: 80px; text-align: left;">
+          <p class="fragment">I/O intensive</p>
+          <p class="fragment" style="margin-top: 20px;">CPU intensive</p>
+          <p class="fragment" style="margin-top: 20px;">Module effect</p>
+          <p class="fragment" style="margin-top: 20px;">My effect</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>i/o intensive</h3>
+        <p>Node's sweet spot</p>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Most common use case for Node</p>
+          <p class="fragment" style="margin-top: 20px;">If done well then even in high I/O scenarios CPU usage will usually be minimal</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>cpu intensive</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">General not a good idea to offload CPU intensive tasks to Node</p>
+          <p class="fragment" style="margin-top: 20px;">Or basically anything that blocks the CPU</p>
+          <p class="fragment" style="margin-top: 20px;">It can be done successfully, but requires effort and probably a native module or two</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>module vs my effect</h3>
+        <div style="margin-top: 40px; text-align: left;">
+          <p class="fragment">Can be difficult to separate the effects of a module on your code in performance analysis.</p>
+          <p class="fragment" style="margin-top: 20px;">When in doubt, try to create simplified benchmarks that don't depend on the external module.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>introduction to node plumbing</h2>
+        <pre style="margin-top: 148px; margin-left: 115px; font-size: 24px; box-shadow: 0 0 0;">╭──────────╮   ╭───────╮   ╭─────────────╮       ╭────╮
+│          │   │       │   │            ╭┴───╮   │    │
+│  client  │←──│ libuv │←──│ streamwrap │ v8 │←──│ JS │
+│ requests │──→│       │──→│            │    │──→│    │
+│          │   │       │   │            ╰┬───╯   │    │
+╰──────────╯   ╰───────╯   ╰─────────────╯       ╰────╯</pre>
+      </section>
+
+      <section>
+        <h2>performance analysis tools</h2>
+        <p>Finally. The fun stuff.</p>
+        <div style="margin-top: 80px; text-align: left;">
+          <p class="fragment">Start with a custom build of Node</p>
+          <p class="fragment" style="margin-top: 20px;">Build v8 from source</p>
+          <p class="fragment" style="margin-top: 20px;">Learn the most useful v8 flags</p>
+          <p class="fragment" style="margin-top: 20px;">Explain how to interpret the output from those flags</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>build our tools</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <p>Build Node:</p>
+          <pre style="margin-top: 28px; font-size: 24px; box-shadow: 0 0 0;">$ git clone https://github.com/joyent/node.git
+$ cd node
+$ export CXXFLAGS="-fno-omit-frame-pointer"
+$ export GYP_DEFINES="v8_enable_disassembler=1 v8_object_print=1"
+$ ./configure
+$ make -j4</pre>
+          <p style="margin-top: 40px;">Build v8:</p>
+          <pre style="margin-top: 28px; font-size: 24px; box-shadow: 0 0 0;">$ cd deps/v8
+$ make dependencies
+$ make -j4 native</pre>
+        </div>
+      </section>
+
+      <section>
+        <h3>side note</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <p>In the case you need to build a module using a local build of Node:</p>
+          <pre style="margin-top: 28px; font-size: 24px; box-shadow: 0 0 0;">$ /path/to/node/node $(which node-gyp) rebuild \
+  --release --nodedir=/path/to/node</pre>
+          <p style="margin-top: 40px;">Or install an npm module:</p>
+          <pre style="margin-top: 28px; font-size: 24px; box-shadow: 0 0 0;">$ /path/to/node/node $(which npm) --nodedir=/path/to/node install</pre>
+        </div>
+      </section>
+
+      <section>
+        <h3>v8 flags</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <p>Most useful v8 flags:</p>
+          <p><code>--trace_deopt (trace deoptimization)</code></p>
+          <p><code>--code_comments (emit comments in code disassembly)</code></p>
+          <p><code>--trace_opt (trace lazy optimization)</code></p>
+          <p><code>--trace_inlining (trace inlining decisions)</code></p>
+          <p><code>--prof (Log statistical profiling information)</code></p>
+          <p class="fragment" style="margin-top: 40px;">Note: They can also be called like so: <code>--trace-opt</code></p>
+        </div>
+      </section>
+
+      <section>
+        <h3>understanding your deopts</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <p>Always remember to use <code>--code-comments</code> with <code>--trace-deopt</code>.</p>
+          <div class="fragment" style="margin-top: 20px;">
+            <p>And now some example output:</p>
+          <pre style="margin-top: 28px; margin-left: 0px; font-size: 20px; box-shadow: 0 0 0;">[deoptimizing (DEOPT eager): begin 0x2b73c5075969  @4, FP to SP delta: 40]
+            ;;; jump table entry 1: deoptimization bailout 4.
+  translating  =&gt; node=30, height=16
+    0x7ffff037fa78: [top + 88] &lt;- 0x2b73c50711a9 ; rdx 0x2b73c50711a9 &lt;an
+      Object with map 0x2f27031074c1&gt;
+    0x7ffff037fa70: [top + 80] &lt;- 0x20d973b04121 &lt;undefined&gt; ; literal
+    0x7ffff037fa68: [top + 72] &lt;- 0x20d973b04121 &lt;undefined&gt; ; literal
+    0x7ffff037fa60: [top + 64] &lt;- 0x20d973b04121 &lt;undefined&gt; ; literal
+    0x7ffff037fa58: [top + 56] &lt;- 0x20d973b04121 &lt;undefined&gt; ; literal
+    0x7ffff037fa50: [top + 48] &lt;- 0x20d973b04121 &lt;undefined&gt; ; literal
+    0x7ffff037fa48: [top + 40] &lt;- 0x22a31ac43edb ; caller's pc
+    0x7ffff037fa40: [top + 32] &lt;- 0x7ffff037faa8 ; caller's fp
+    0x7ffff037fa38: [top + 24] &lt;- 0x20d973b54679; context
+    0x7ffff037fa30: [top + 16] &lt;- 0x2b73c5075969; function
+    0x7ffff037fa28: [top + 8] &lt;- inf ; xmm1
+    0x7ffff037fa20: [top + 0] &lt;- 2147483647 ; rax (smi)
+[deoptimizing (eager): end 0x2b73c5075969  @4 =&gt; node=30, pc=0x22a31ac8c309,
+  state=NO_REGISTERS, alignment=no padding, took 0.113 ms]</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3>types of deopts</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <p>There are 4 types of deopts you'll encounter:</p>
+          <p class="fragment" style="margin-top: 20px;">eager: Occurs with unexpected element transitions.</p>
+          <p class="fragment" style="margin-top: 20px;">lazy: Occurs when an assumption is made on a global which no longer holds true.</p>
+          <p class="fragment" style="margin-top: 20px;">soft: As v8 collects type information on functions it will mark dead subgraphs of the AST (abstract syntax tree). If one of those marked graphs is called this will cause the function to deoptimize and tell v8 more type information needs to be collected.</p>
+          <p class="fragment" style="margin-top: 20px;">debugger: Not really a bailout, but used by the debugger to deoptimize stack frames to allow inspection.</p>
+        </div>
+      </section>
+
+      <section>
+        <h3>v8's tick processor</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <div class="fragment" style="margin-top: 20px;">
+            <p>Example output:</p>
+          <pre style="margin-top: 28px; margin-left: 0px; font-size: 20px; box-shadow: 0 0 0;"> [Shared libraries]:
+   ticks  total  nonlib   name
+   2765    0.4%    0.0%  /lib/x86_64-linux-gnu/libc-2.17.so
+
+ [JavaScript]:
+   ticks  total  nonlib   name
+   2616    0.4%    0.4%  Stub: CEntryStub
+   2073    0.3%    0.3%  LazyCompile: *_crc32 /path/buffer-crc32/index.js:64:16
+   1683    0.3%    0.3%  LazyCompile: *escape /path/jade/lib/runtime.js:133:33
+   1410    0.2%    0.2%  LazyCompile: *replace native string.js:212:23
+   1377    0.2%    0.2%  Function: &lt;anonymous&gt; :38:11
+    655    0.1%    0.1%  Function: ~&lt;anonymous&gt; :1:10
+    630    0.1%    0.1%  LazyCompile: join native array.js:378:19</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3>interpreting the tick processor</h3>
+        <div style="text-align: left; margin-top: 40px;">
+          <p>Most common things you'll see:</p>
+          <p class="fragment" style="margin-top: 20px;"><code>LazyCompile</code>: Code was "lazily compiled". Does <i>not</i> mean that much time was spent in lazy compilation.</p>
+          <p class="fragment" style="margin-top: 20px;"><code>*</code> prefix: Signifies the function was run through the optimized compiler (e.g. Crankshaft).</p>
+          <p class="fragment" style="margin-top: 20px;"><code>~</code> prefix: Signifies was run through the unoptimized (or full-codegen) compiler, but at the time of execution v8 knew it had enough type information for the function to be optimized.</p>
+          <p class="fragment" style="margin-top: 20px;">no prefix: Code was run through the unoptimized (or full-codegen) compiler and v8 doesn't have enough type information about the function to know if it could be optimized.</p>
+          <p class="fragment">This also happens if the function has been explicitly marked by v8 as unoptimizable.</p>
+          <p class="fragment" style="margin-top: 20px;"><code>Stub</code>: Hand written assembly functions that follow the JavaScript calling convention.</p>
+        </div>
+      </section>
+
+      <!-- TODO: finish up slides. Just do the rest from the console for now. -->
+
+      <section>
+        <h2>tools in action</h2>
+        <p>Put those suckers to work</p>
+      </section>
+
+      <section>
+        <h2>benchmarking the right way&trade;</h2>
+        <p></p>
+      </section>
+
+      <!--
+      <section>
+        <h3>writing functions inline</h3>
+        <pre style="font-size: 18px;"><code class="language-javascript" style="margin-top: 16px;">var SB = require('buffer').SlowBuffer;
+var max = 3e4;
+}());</code></pre>
+        <p class="fragment">Runtime:</p>
+        <pre class="fragment" style="margin-top: 28px; font-size: 24px; box-shadow: 0 0 0;">
+$ /usr/bin/time node primegen0.js
+19.53user 0.00system 0:19.58elapsed 99%CPU (51040maxresident)k
+0inputs+0outputs (0major+13104minor)pagefaults 0swaps
+        </pre>
+      </section>
+      -->
+
+      <!--
+      <section>
+        <h3>Buffer#toString() on one byte characters</h3>
+        <pre style="margin-top: 48px; margin-left: 250px; font-size: 24px; box-shadow: 0 0 0;">
+utf8    512KB  104.23 μs/op  -183.9%
+        </pre>
+      </section>
+      -->
+
+  </div>
+
+  <script src="lib/js/head.min.js"></script>
+  <script src="js/reveal.min.js"></script>
+
+  <script>
+    // Full list of configuration options available here:
+    // https://github.com/hakimel/reveal.js#configuration
+    Reveal.initialize({
+      controls: true,
+      progress: true,
+      history: true,
+      center: true,
+
+      theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+      transition: Reveal.getQueryHash().transition || 'none', // default/cube/page/concave/zoom/linear/fade/none
+
+      // Optional libraries used to extend on reveal.js
+      dependencies: [
+        { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+        { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+        { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+        { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+        { src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+        { src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+      ]
+    });
+  </script>
+</body>
+</html>

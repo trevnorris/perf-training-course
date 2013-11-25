@@ -1,0 +1,421 @@
+## Introduction to the three key areas of performance
+
+The most important thing for a well performing site isn't just that the
+code runs fast. In fact, that's not even priority. Here we are going to
+take a quick look into the three key areas of making your site fast.
+
+
+### Stability
+
+These are just a few basics, but you'd be surprised how often I don't see
+them followed. Hence the quick overview.
+
+If your site can't hold itself together then developer time will be spent
+rushing hot patches out the door to keep it afloat. Creating solid code
+from day one allows developers the time and psychological freedom to
+experiment with new ways of doing things. This is how I was able to come
+up with many of the performance improvements in Node core. While there's
+the occasional bug that needs to be fixed in a hurry, most days I'm able
+to spend time trying new ways of doing things, assembling benchmarks,
+analyzing code, etc.
+
+One reason I have a problem with the idea that Node should be able to
+"handle" coding errors with grace is because the fact there is an
+unhandled case in your code means there is instability. Which also
+means that I can't trust that changes I make of the more complex nature
+will always be properly tested.
+
+Hence one reason I believe it's so important to fail early. Find out
+exactly when/where/how something failed and fix it. Throwing early from a
+module i a good thing. If users are using a RESTful API you created, then
+make sure to parse all the correct arguments. Don't make assumptions how
+they will use your API.
+
+Here are some quick practices you can implement from day one:
+
+- Make no assumptions about how the API will be used. Type and range check
+every variable that comes in from the user facing API. I recommend always
+leaving in these checks.
+- For internal API calls do all the type checks, but add them in a way
+that can be stripped when the code is ready for production. Having macros
+in JavaScript can look strange, but creates a good balance of safety and
+performance.
+- Try not to make APIs that allow function parameters to bubble down.
+Usage docs that look like
+`function runMe([object[, string[, number]][string[, object]][number])`
+are best to avoid completely. If you need to do more than one type check
+per function parameter then rethink your API. This type of API also makes
+for code that v8 will **DEOPTIMIZE**.
+- Create a standard way to coerce. This is something that Node core
+currently suffers from in order to keep backwards compatibility. For
+argument coercion, here are a couple examples:
+  - `function run(string[, number])`: The first argument is required, so
+any `Primitive` passed as the first argument will be coerced to a
+`String`.
+  - `function run([object][string])`: Really try not to do this. If
+working with legacy code then I'd treat all `Primitive`s as a string and
+everything else as an `Object`.
+- Create a standard for when `Error`s will be thrown or passed. This is
+another thing Node core currently suffers from for backwards
+compatibility. If the function doesn't accept a callback then there's
+little choice but to throw. When a callback is accepted then I recommend
+throwing immediately if arguments **types** are incorrect and cannot be
+coerced. Otherwise pass the error to the callback. I also recommend having
+a document standard set of errors that can be expected so they're easy to
+check at runtime.
+- **UNIT TEST**. Make sure there are unit tests for every user facing
+API. You can easily deduce, at the least, the set of parameters that
+should cause the function to throw. Start there. If a number is expected
+then enter all the incorrect ranges. Make sure your functions fail when
+and how you expect. Allowing bad input in without you knowing is far worse
+then keeping good input out.
+
+
+**Note**: Nothing special, but here is my `Primitive` coercion guide:
+- `Number` (e.g. `double`): `+arg`
+- `Int32`: `~~arg` or `arg|0`
+- `Uint32`: `arg >>> 0`
+- `String`: `''+arg`
+- `Boolean`: `!!arg`
+
+
+### Scalability
+
+NOTENOTENOTE: using smaller boxes in more locations than a single massive
+location.
+
+At any moment a barrage of users is about to visit your site. They want to
+sign up for your cool new service, but alas. The site has stopped
+responding to the flocking users. Can you quickly fire up more servers at
+a moment's notice without needing to do a bunch of configuration and last
+minute code changes?
+
+Fortunately Node lends itself to scalable design. Being stuck single
+threaded (usually) forces users to think about how they can get their
+application running on multiple processes. From here it's usually easy to
+figure out how to run on multiple machines.
+
+Proper stress testing can show you if the application's architecture is
+solid enough to handle the unanticipated loads. Here is a short list of
+ways to stress test your system.
+
+- Rush of users (i.e. many requests coming from different IP's)
+- Hacking attempt (e.g. continue to run skipfish instances until your
+boxes become unresponsive)
+- DDOS (many requests coming from the same IP's)
+- If running in multiple locations, test data center outages. (e.g. what
+happens to East Coast response times if your Atlanta data center goes
+down?)
+- Use services to test response time from different locations around the
+world.
+
+Much of this will come from experience in designing scalable systems.
+There are some basic guidelines that developers can follow and questions
+they can ask themselves when architecting a platform:
+
+- If your Node process takes more than a second (literally) to start up and
+be ready for use, rethink how things are working.
+- How long does it take to stand up a new server?
+- Can a server maintain itself once it's running (e.g. if a process fails
+will a new one be launched automatically? will log files be automatically
+delivered to the correct location if errors occur? etc.).
+
+These tests will truly show if our efforts in the next section are working.
+Once you get the hang of it a lot of micro optimization are easy to see,
+but are the micro performance gains costing something at the macro level?
+
+Making your code faster while making the application slower is possible,
+and easy to overlook. As we begin to explore the intricacies of improving
+source performance always keep in the back of your mind that the reason
+for these improvements is to make the application run faster. Not some
+micro benchmark.
+
+
+### Source
+
+Your mantra should be "hardware is the limitation, not my application."
+
+This will be the focus of the remainder of the training. Please continue
+to the next section.
+
+
+## Areas of Application Performance
+
+Measuring your application's performance at the micro level can be done in
+many ways. I generally see a 2x2 grid of computationally vs I/O intensive
+and my code vs the world.
+
+
+### I/O intensive
+
+Here we go over how data is passed through Node. What Streams and the
+Event Emitter actually are. We'll strip away some of the abstraction and
+reveal some of Node's guts.
+
+Here it's easy to run into hardware limitations. Trying to write log files
+to disk? There's a pretty hard limitation on that. Trying to write out
+more data over the network than the hardware will allow? Yeah, no.
+
+We'll discuss how to best manage the resources you have, and to know when
+the application just can't do any more.
+
+
+### Computationally intensive
+
+Brief discussion on why doing computationally expensive things is not
+great for Node, and how they can utilize native modules to accomplish some
+of these things.
+
+
+### The world
+
+The number of modules in npm are increasing near exponentially. So there
+are two things that a developer needs to look for:
+
+Selecting a module is a commitment. You can probably find at least half a
+dozen modules that perform the same task for many different things. Just
+keep one thing in mind. You don't have a contract for continued support.
+If the developer decides to stop supporting that module you either have to
+fork and self maintain that, or rewrite however many lines of code to use a
+new module. There are plenty of good modules out there maintained by the
+open source _community_. Unless you're just hacking together a prototype,
+make sure you pick one that has a good track record.
+
+Module performance affecting my code. Even if I adhere to every best
+practice and make the fastest code v8 can chew, if the module I'm using
+sucks then it will be the bottleneck.
+
+It's important we learn how to differentiate the performance of our code
+vs the performance of module code. This will be covered in more detail in
+a latter section.
+
+
+### My code
+
+Again, focus of the training. Please continue.
+
+
+## Analyzing out code
+
+Now we'll being exploring how to analyze our code.
+
+
+### Getting started
+
+First you'll need to be able to build Node and v8 from source.
+
+(include simple steps on doing this)
+
+
+
+### How to measure
+
+#### --prof
+
+Let's get an idea of how things are working by looking at the output of
+`--prof`.
+
+Notes: Interpreting results from `--prof`.
+
+`LazyCompile`: Means that the code was "lazily compiled", not that v8
+spent that much time lazily compiling the code.
+
+`Stub`: These are hand written assembly functions that follow the
+JavaScript calling convention. No user code will be labeled with
+`Stub`.
+
+Stubs can also tail-call other stubs. Say function `f()` calls stub `A()`,
+and after stub `A()` is finished executing it immediately calls stub `B()`.
+As far as the profiler is concerned the call to `B()` was made from `f()`.
+So in the stack traces you see may see call chains `f() -> A()` and
+`f() -> B()`. Even though the actual call chain is `f() -> A() -> B()`.
+
+`*` prefix: Signifies the optimized function by crankshaft was used.
+
+`~` prefix: Signifies the unoptimized function was used.
+
+
+Note: Understanding inlining. Only _local_ functions can be inlined.
+
+
+#### perf stat
+
+Simple usage:
+
+```
+$ perf stat node script.js
+```
+
+Understanding output:
+
+http://paolobernardi.wordpress.com/2012/08/07/playing-around-with-perf/
+
+
+
+A lot of good performance is just knowing the API you're using and how to
+create an API using best practices.
+
+(continue to fill this out...)
+
+Notes:
+
+- Scoped functions (v8 needing to recompile each new instance of the function,
+  and show that not naming functions can lead to pain).
+- Keep things monomorphic.
+  - Predefine object properties on constructors for values set later.
+- Find your hot paths (what's the best way to profile a program so you know
+  how many times functions run?)
+- When profiling, it may be painful separating your code from that of modules
+  being used.
+- How to keep methods in hot paths local (need to write some test cases to
+see if this is still an issue).
+- Demonstrate what v8 will do when function parameters change during
+runtime.
+
+Tools to use:
+
+- Start with v8 built in options to pick the low hanging fruit
+  - `--trace_inlining` (trace inlining decisions)
+  - `--trace_opt_verbose` (extra verbose compilation tracing)
+  - `--code_comments` (emit comments in code disassembly)
+  - `--trace_deopt` (trace optimize function deoptimization)
+  (remember this should be used with --code_comments)
+
+- Now we want to get an overall picture of what the flow looks like
+  - Use `--prof` and the `linux-tick-processor` (want a good picture where
+time is being spent)
+  - Use `strace`
+  - Use `prof`
+
+Bringing it all together. Begin to analyze the module and explaining what
+different outputs mean from the above flags. Show how to quickly check the
+v8 source to understand a given code comment better.
+
+Should we step into the Hydra and/or use `ll_prof`?
+
+Sites for reference:
+
+https://mkw.st/p/gdd11-berlin-v8-performance-tuning-tricks/
+
+http://mrale.ph/blog/2011/12/18/v8-optimization-checklist.html
+
+
+## Into the Beast
+
+**FEEL FREE TO SIMULTANIOUSLY DEBUG MODULE SOURCE**. Patches can be sent
+in, and you can learn if the module is the right one for you.
+
+This is where the majority of time will be spent. We will begin to walk
+though a module I will have created. We will analyze the module from the
+different points of view already discussed while stepping through many
+of the different tools developers can use.
+
+
+
+NOTES:
+- Know your own API: specifically for cases when in a "controlled
+environment" meaning you should have control of the requests from both
+the source and destination, it should be easy to quickly check for bad
+requests, log and drop the request immediately if that's the case.
+
+- Analyze all the things: it's important to not only analyze performance
+and stability of your own application, but also that of the modules you
+elect to use. While they're probably not under any contractual obligation
+to support your needs, that doesn't mean you shouldn't be proactive about
+helping improve upstream source. If they doesn't seem to want to change,
+then be ok either forking or using something else.
+
+- Introduction to writing scalable APIs: talk about always naming your
+functions, and how we'll demonstrate later why this is important.
+
+- To fine grained. This will be a single bullet point:
+* Common performance missteps
+  * Lazy about encoding
+  * Polymorphic objects
+  * Slow type checks
+  * Overloading the garbage collector
+  * Using the wrong API for the job
+  * Bloating the hot paths
+  * Functions in functions in functions
+
+- Overloading the garbage collector: Buffer slices, sub-strings, ...
+
+- Using the wrong API: talk about doing stuff like using fs.appendFile
+instead of opening a write stream. Or how if multiple processes need to
+write to the same file, instead pipe the data through a socket and have
+a single location aggregate the data and write it out to disk
+
+
+
+
+
+Architecture of the module:
+- Have some sort of API over TCP.
+- Log activity/errors to disk.
+
+
+Performance issues that the module will have?
+- Lazy about encoding.
+- Polymorphic object instances.
+- Blocking code (? maybe doing something that's computationally expensive
+that should be done elsewhere)
+- Using fs to continually reopen a file and append log data instead of
+using a write stream.
+- Not sticking to Smi when you could.
+- Bitwise operation tricks.
+- Slow type checking (e.g. using Object.prototype.toString and doing a
+string compare, or better yet using a regexp).
+- Figure out how to put a lot of load onto the GC. Possibly by keeping
+slices of Buffers around instead of copying out data to a new SlowBuffer.
+- Show how "controlled" API's can build more direct implementations than
+using their generic counterparts (e.g. how LinkedIn's API is from a native
+device application to their servers. Receiving the data directly over TCP
+and doing a quick parse is going to be faster than using HTTP module. And
+if a bad request comes in, just log and drop it on the floor).
+
+
+
+
+
+Interesting things to investigate:
+(some of these would be a lot more useful if I could find a way to translate the
+address of what is being referenced)
+--optimize_for_size (Enables optimizations which favor memory size over execution speed.)
+--max_inlined_source_size (maximum source size in bytes considered for a single inlining)
+--trace_generalization (trace map generalization)
+--trace_migration (trace object migration)
+--trace_track_allocation_sites (trace the tracking of allocation sites)
+
+--prof (Log statistical profiling information (implies --log-code).)
+      type: bool  default: false
+
+--prof_browser_mode (Used with --prof, turns on browser-compatible mode for profiling.)
+      type: bool  default: true
+
+
+--cpu_profiler_sampling_interval (CPU profiler sampling interval in microseconds)
+      type: int  default: 1000
+
+--trace_gc (print one trace line following each garbage collection)
+      type: bool  default: false
+
+--print_cumulative_gc_stat (print cumulative GC statistics in name=value format on exit)
+      type: bool  default: false
+
+--trace_external_memory (print amount of external allocated memory after each time it is adjusted.)
+      type: bool  default: false
+
+--stack_trace_limit (number of stack frames to capture)
+      type: int  default: 10
+
+--trace (trace function calls)
+      type: bool  default: false
+
+--trace_opt_stats (trace lazy optimization statistics)
+      type: bool  default: false
+
+
+--preallocate_message_memory (preallocate some memory to build stack traces.)
+      type: bool  default: false
+(possibly useful for long stack trace performance?)
+

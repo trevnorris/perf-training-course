@@ -1,0 +1,342 @@
+Node, Performance and Stuff:
+- There's a lot more to good performance than making code faster.
+- As we'll discuss in greater detail, good "performance" is what your
+users perceive.
+- Node can do specific things well. Make sure it stays there.
+
+Stability:
+- My definition of "stable" is that the process can be started and
+continuously hammered without ever requiring the process to restart.
+- Stability comes at a performance cost. We'll discuss how to minimize
+this cost.
+- We'll review basics in making your source properly stable.
+
+Scalability:
+- Be prepared that at any given time your site can get hammered with
+requests.
+- It should be a goal to minimize performance impact to your users.
+- Does your architecture allow for more servers to be rolled out at a
+moments notice.
+
+Source:
+- I like the mantra "hardware is the limitation, not my application".
+- Here we'll learn the tools necessary to debug our application,
+
+
+
+Three key areas of performance:
+- Now we begin the in depth discussion of each topic.
+- But seriously, some of these things are really basic. I just feel the
+need to at least mention them.
+
+
+Hardening your code:
+- Easy to get into a downward spiral of rushing fixes out the door to keep
+your application running with demand, and hard to get ahead of it again.
+- Stable code and proper tests give developers psychological freedom to
+experiment and explore with new ways of making things fast.
+- So create stable code from DAY ONE.
+- ()Explain how I was able to use this as an advantage to making the
+improvements to core I've made so far, and how it'll help moving forward.
+  - A lot of what I've done over the last year is performance based, and
+  because the tests have been fairly well maintained it was easy for me to
+  try out new things knowing that if all current tests pass then I'm 90%
+  the way there.
+
+How to achieve stability:
+- Now we get into some of the basics of making stable code.
+
+Simplify your function's parameters:
+- Complex argument parsing kills performance and developer's brain cells.
+- The amount of complexity in your code has an exponential correlation
+to the amount of flexibility you give your users.
+- Stick to the bubble down approach:
+  - `fn([arg1[, arg2[, arg3]]])`
+  - `fn([arg1][arg2][arg3])`
+- Definitely don't do things like:
+  - `fn(arg1[, arg2[, arg3][, arg4]][, arg5][, arg6])`
+
+Make no assumptions:
+- JavaScript is loose with its types, but don't be with yours.
+- Don't just define Number, String, Object. Also define types and ranges.
+For example: Uint32, Buffer instance, etc.
+- It's better to keep out good data than allow bad data in.
+- ()Show example of node@498200b where missing a few simple range checks
+allowed users to read from arbitrary memory via Buffers.
+  - ()Also make this a note of why I believe out of bounds accesses to
+  anything with external memory should throw.
+
+Set standards:
+- Throw consistently
+  - It's easy to have many developers with many different ideas of how
+  errors should be handled. Don't end up in the case where developers
+  wonder why one method with a callback always receives the error while
+  another throws everything.
+  - Throwing should signify the application has entered into an
+  unrecoverable unknown state.
+  - I suggest throwing when it's impossible to coerce incoming arguments,
+  and for out of bound range checks when working with external memory
+  (i.e. Typed Arrays or Buffers).
+  - Throw as quickly as possible. It should mean that your program has
+  reached a point it doesn't know how to continue. Throwing is not a way
+  to just signal the developer something sorta bad happened.
+  - With asynchronous APIs I suggest to still throw for initial argument
+  parsing, but pass all other errors to the callback.
+- Coerce consistently
+  - If your function parameters look like `fn([number][boolean])` then the
+  API coercion will be an exception to whatever standards you set. Try to
+  avoid it.
+  - Instead make it look like `fn([number[, boolean]])`.
+  - Primitive to primitive coercion is simple. I generally don't suggest
+  coercion from an object to a primitive.
+  - Only allow the amount of flexibility that is easy to maintain. There's
+  plenty else that will be complex. Figuring out how to parse a complex
+  set of arguments is unnecessary pain.
+
+User facing vs internal API:
+- User facing API should always check all incoming arguments.
+- Internal APIs have slightly more flexibility. I would recommend using
+macros to check your API internally, and have that code removed for
+release builds.
+
+Unit test!:
+- Easy to add the basics of just testing all the failure points, or places
+that will throw.
+- Great safety net for developers as they try out new things.
+- ()Show examples of setting up basic unit tests using assert.
+
+
+
+Grow with demand, on demand:
+- At any moment a barrage of users is about to visit your site. They want
+to sign up for your cool new service, but alas. The site has stopped
+responding to the flocking users. Can you quickly fire up more servers at
+a moment's notice without needing to do a bunch of configuration and last
+minute code changes?
+- Remember that performance is how your users perceive it, not what some
+benchmarks dictate.
+
+Single threaded ain't so bad:
+- The single threaded naturally helps develop at _least_ for running in
+multiple processes.
+- As far as the application goes, it's usually not a much bigger step to
+accommodate being able to run on multiple boxes in remove locations.
+
+Avoid using Node to deliver static content:
+- Avoid it at all costs.
+- Node is not an application you want to use to serve more than a miniscule
+amount of static data. It wasn't made to do it.
+- Use a CDN. This is what they were made for. Don't deliver content
+directly from a cloud storage like S3. Place a CDN between you and all
+your static content. CloudFlare has a free account. Try it out. Like right
+now.
+
+Compartmentalize dynamic content and punish your CDN:
+- If content is refreshed at specific times then set your CDN to
+invalidate the cache at those times.
+- I like to use a directory list method to make my dynamic content look
+static.
+- In some cases it's beneficial to have the client make more requests than
+a single massive one.
+- Think of it this way, if many users are making many smaller requests and
+offloading that pressure onto the CDN then your servers (the boxes that
+provide the actual service) have a better chance of standing up.
+
+Sacrificing micro for the macro:
+- At times it'll be necessary to sacrifice performance at the micro level
+to gain at the macro level.
+- Sufficient checks will add a cost.
+  - Hopefully not much if things were designed well.
+
+Basic stress testing:
+- Stress tests aren't benchmarks. They are made to try and bring down your
+servers.
+- Scenarios can include:
+  - Having your page put on HN
+  - Hackers are trying to probe your site (hit it a lot w/ skipfish)
+  - DDOS attack
+
+
+
+Understand the sources:
+- Yours and the modules you choose.
+- These things sacrifice performance in that every minute you spend
+fixing stuff that shouldn't have broken is a minute spent where you can't
+optimize your code.
+
+Choosing modules wisely:
+- It's probable that the modules you choose to use are open source and
+community driven. Which means there's no contract for continued support or
+timely bug fixes.
+- Be prepared to deal with a project being left behind or not going the
+direction you'd expect.
+
+Analyze all the things:
+- Be equally as critical of the performance of your modules as you are of
+your own code.
+- Be proactive in posting fixes/improvements to the modules you've chosen
+to use.
+
+Introduction to writing scalable APIs:
+- There are a few key things you can do to make your APIs more scalable,
+and overall easier to upgrade in the future.
+- ()Show 
+
+Using hardened code to experiment and explore:
+- Once you're code is well tested you can start doing ...
+
+
+
+General areas of application performance:
+
+I/O intensive:
+- abc
+
+CPU intensive:
+- abc
+
+How the world affects my code
+- abc
+
+How my code affects the application
+- abc
+
+
+
+Introduction to Node plumbing:
+
+Overview of internal data flow:
+- Data comes into Node via libuv
+- For TCP, UDP and Pipe connections it enters in through the `StreamWrap`
+class.
+- It is then immediately passed to JS where it's queued and waits for the
+user to accept the data via `.read()`.
+
+How this affects I/O:
+- Data pipes can get clogged. When a Buffer is created the amount of
+memory allocated is reported to v8.
+- So, while allocating a bunch of memory won't cause the process to crash.
+It will cause the GC to kick in more aggressively.
+
+
+
+Performance analysis tools:
+- We'll be going over the basics of several of the most common tools
+you'll probably end up using on Linux
+
+Build steps for the tools we want:
+- ()Remember to explain what these flags are for
+- Build steps for Node.js:
+  - `git clone https://github.com/joyent/node.git`
+  - `cd node`
+  - `export CXXFLAGS="-fno-omit-frame-pointer" GYP_DEFINES="v8_enable_disassembler=1 v8_object_print=1"`
+  - `./configure`
+  - `make -j4`
+- Build steps for v8:
+  - `cd deps/v8`
+  - `make dependencies`
+  - `make -j4 native`
+- For quick reference
+  - `export NODE_EXEC=/path/to/node/node`
+  - `export V8_PATH=/path/to/node/deps/v8/out/native`
+- How to run Node stuff using a local directory:
+  - `/path/to/node/node $(which npm) --nodedir=/path/to/node install`
+  - `/path/to/node/node $(which node-gyp) rebuild --release --nodedir=/path/to/node`
+
+v8 flags overview:
+- Get all possible v8 flags through `node --v8-options` (warning: there
+are a lot of them).
+- Most common flags you'll use:
+  - `--trace_deopt (trace deoptimization)`
+  - `--code_comments (emit comments in code disassembly)`
+  - `--trace_opt (trace lazy optimization)`
+  - `--trace_inlining (trace inlining decisions)`
+  - `--prof (Log statistical profiling information (implies --log-code).)`
+
+Interpret your DEOPTs:
+- Always run with `--code-comments`.
+- There are 4 types of DEOPTs:
+  - eager: Occurs with unexpected element transitions.
+  - lazy: Occurs when an assumption is made on a global which no longer
+  holds true. Reason it's called "lazy" is because the deoptimization
+  doesn't happen until control reaches the optimized function.
+  - soft: As v8 collects type information on functions being run it will
+  mark dead subgraphs of the AST (abstract syntax tree) to deoptimize the
+  function if one of those branches are reached. Basically stating that
+  additional type information needs to be collected.
+  - debugger: This type is not really a bailout, but used by the debugger
+  to deoptimize stack frames to allow inspection.
+
+Understanding v8's tick processor:
+- `LazyCompile`: Means that the code was "lazily compiled" (i.e. the
+function was compiled when it was executed), not that v8 spent that much
+time lazily compiling the function.
+- `*` prefix: Signifies the function was run through the optimized
+compiler (e.g. Crankshaft).
+- `~` prefix: Signifies the function was run through the unoptimized (or
+full-codegen) compiler and v8 had enough type information to know the
+function was optimizable.
+- no prefix: Code was run through the unoptimized (or full-codegen)
+compiler and v8 didn't have enough type info on the function to know if it
+could have been optimized. This also happens if the function has been
+marked by v8 as unoptimizable.
+- `Stub`: Hand written assembly functions that follow the JavaScript
+calling convention.
+Stubs can also tail-call other stubs. Say function `f()` calls stub `A()`,
+and after stub `A()` is finished executing it immediately calls stub `B()`.
+As far as the profiler is concerned the call to `B()` was made from `f()`.
+So in the stack traces you see may see call chains `f() -> A()` and
+`f() -> B()`. Even though the actual call chain is `f() -> A() -> B()`.
+
+Finding those unnamed functions:
+- The code block of an unnamed function will be located in the code block
+of another function. We can use this to our advantage.
+- Make sure to build with IRHydra options.
+- Run with: `./node --print-opt-codes --trace-opt test.js > optc.out`
+- Get the address of the `SharedFunctionInfo` you're looking for.
+- I like to filter my content using: `:g/\v^\[(marking|disabled|optimizing)/d`
+- Search for `[address] <SharedFunctionInfo>`.
+- Look above to see the calling code block.
+- Can find any code block via: `/embedded object.*<SharedFunctionInfo`
+
+Basics of Linux profiling using `perf`:
+- ()Note that I've upgraded to the latest perf release.
+- `perf record`: aaa
+- `perf report`: bbb
+- `perf stat`: ccc
+- `perf probe`: ddd
+
+Introduction to IRHydra:
+- Learn assembly.
+- Learn to interpret v8's IR output from Crankshaft.
+- Profit.
+- But seriously, it's a tool that will usually divert your attention from
+what else is going on in your code. For assembly level performance analysis
+you need to have some pretty tight and hot loops in JS, which 99.9% of the
+time you won't.
+
+
+
+Trying out our tools:
+- Now let's go look at some code in the wild.
+
+Use what we've learned on real world code:
+- abc
+
+Perform tests on modules we may like to use:
+- abc
+
+
+
+Writing benchmarks:
+- abc
+
+Understand the goal:
+- abc
+
+Don't just test the optimal scenario:
+- abc
+
+From micro to macro:
+- abc
+
