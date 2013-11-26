@@ -1,0 +1,10 @@
+node_modules
+tools/data_entries.json
+npm-debug*
+
+core
+vgcore.*
+v8*.log
+perf.data
+perf.data.old
+*.swp

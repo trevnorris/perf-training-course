@@ -1,0 +1,12 @@
+{
+  "name": "example-module",
+  "version": "0.1.0",
+  "description": "Example performance enhancement module",
+  "author": "Trevor Norris <trev.norris@gmail.com>",
+  "dependencies": {
+    "consolidate": ">=0.9.1",
+    "dot": ">=1.0.1",
+    "express": ">=3.4.x",
+    "mongodb": "*"
+  }
+}

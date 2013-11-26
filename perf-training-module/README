@@ -1,0 +1,112 @@
+Example Performance Enhancement Module
+======================================
+
+This module has been created to teach you how to make things awesome.
+
+Notes about what this module is going to do:
+
+- Have an HTTP API.
+  - The example will be like LinkedIn's case where the API is accessed via
+  a controlled environment. Where we always expect the request headers to
+  follow a specific format. This should allow to first address the general
+  use case of delivering website content. Then dive into more specifics.
+  - So it will use controlled request headers to deliver dynamically
+  generated content from the template system doT. These will basically be
+  HTML snippets that will populate the app's page.
+  - It will need to deliver JSON objects that will be used by the app to
+  populate dynamic pages.
+- Connect with some remote service that will feed back data that will be
+used in the return response to the HTTP request.
+  - The returned data will be fed into doT to template the data we are
+  sending back to the client.
+  - Information like where are the static assets that will be displayed on
+  the page. Here we can go over the importance of using something like a
+  CDN.
+  - Show how to cheat and make a CDN cache small parts of your dynamic
+  content when applicable.
+- Log events/data to disk.
+  - Stuff like request IP address, request headers, etc.
+- Use plenty of modules to complete these tasks.
+  - Initially use express for the http server. Then progress away from it.
+  - Consider using winston for logging. (Depends on performance on how I
+  use it. Either move towards it or away from it.)
+  - mongodb nodejs module.
+- Use MongoDB to store/retrieve data.
+  - Will need to generate a good amount of plausible content and then have
+  a script that an load that into a new MongoDB instance.
+
+
+What stability improvements will be possible:
+
+- Lack of type checking.
+  - This will lead to spontaneous errors that arise as we being
+  implementing the performance improvements. We'll show that having god
+  tests in place is very necessary.
+- Lack of range checks.
+  - This will result in incorrect values passed to our internal API as we
+  begin to implement some performance features that will look fine from
+  the beginning because we will not have realized the implications
+  somewhere else.
+
+
+What performance improvements will be possible:
+
+- Logging process events.
+  - Start by writing files using vs.appendFileSync().
+  - First we'll start with the very obvious by switching to fs.appendFile().
+  - Next move to fs.createWriteStream().
+  - Once the module is running in multiple processes then move to piping
+  log data to the cluster's parent via a Pipe. Have the parent process
+  write out file data in proper order.
+- The module will start off as a single running process.
+  - Introduce the cluster module to use the machine better.
+  - How to recover crashed processes.
+- Sending HTTP responses
+  - Start by generically writing out each response as individual strings
+  and not setting Content-Length.
+  - First make sure each response knows ahead of time how long the
+  Content-Length will be. (Make sure everyone understands that the
+  Content-Length is the BYTE SIZE of the data. Not the character length.
+  Also that it is the byte size of the body of the return message. It
+  doesn't include the headers.)
+  - Use stream.cork() to internally buffer all responses until the data is
+  ready to be sent.
+  - Cache strings as Buffers where you can.
+  - *Use proper character encoding for writes.
+- Hammer the GC.
+  - Find bits of buffer data that we want to hang on to and cache their
+  slice.
+  - Then move to creating a new SlowBuffer and writing out the data to it.
+- Hammer v8.
+  - Create lots of function closures that cause
+
+- Ultimate awesome performance improvements.
+  - The HTTP API expects very specific headers. So instead of using the
+  http module, which is made to handle everything, instead setup a custom
+  TCP server and parse the incoming requests yourself. (Some of the http
+  logic will come in handy here. Like knowing the max header size. e.g.
+  http_parser only allows 80KB through.)
+  - Quickly check for malformed requests and immediately close the
+  connection.
+
+* (Used in multiple places. So cover the topic then go through the module
+looking for ways to fix that one issue.)
+
+
+Misc. Notes:
+
+- Each commit will be an improvement. This way we can make sure to go
+through the steps in proper order and it'll be easy to make sure each
+step works smoothly. (Optimally it might be best to have the improvements
+committed in reverse. So the most optimal code is the first commit. Then
+would only need to `git checkout HEAD^` for each step.)
+- Each step should have a note about what tool to use in order to find the
+performance improvement that will be found in the next step.
+- Each step should have pre-recorded the individual benchmarks that result
+from the change.
+- Each step should include an appropriate benchmark for what we're testing.
+- Show not only the performance gains but also the memory usage gains.
+- One advantage of using the TCP server directly is that you'll be able to
+get information like if a request came in with a request header that's too
+large. This would automatically be dropped by the HTTP server. Now instead
+some information can be logged about the request.
